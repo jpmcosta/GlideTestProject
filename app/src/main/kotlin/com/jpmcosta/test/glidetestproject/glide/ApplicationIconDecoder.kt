@@ -1,6 +1,7 @@
 package com.jpmcosta.test.glidetestproject.glide
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -21,18 +22,21 @@ class ApplicationIconDecoder(private val context: Context) : ResourceDecoder<App
     override fun decode(source: ApplicationIcon, with: Int, height: Int, options: Options?): Resource<Bitmap>? {
         val packageName = source.packageName
         val packageManager = context.packageManager
-        val icon = packageManager.getApplicationIcon(packageName)
-        return BitmapResource.obtain(icon.bitmap, bitmapPool)
+        return try {
+            packageManager.getApplicationIcon(packageName).bitmap.let { bitmap ->
+                val bitmapCopy = bitmap.copy(bitmap.config, true)
+                BitmapResource.obtain(bitmapCopy, bitmapPool)
+            }
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
+        }
     }
 
 
     private val Drawable.bitmap: Bitmap
         get() {
-            if (this is BitmapDrawable) {
-                val bitmapDrawable = this
-                if (bitmapDrawable.bitmap != null) {
-                    return Bitmap.createBitmap(bitmapDrawable.bitmap)
-                }
+            if (this is BitmapDrawable && bitmap != null) {
+                return bitmap
             }
 
             val bitmap = if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
